@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Paragraph spacing for the question/explanation/passage Tiptap editors. @tailwindcss/typography
+   isn't installed (confirmed: not a dependency, and the served CSS has zero `.prose` rules) and
+   Tailwind Preflight zeroes margin on every element, so without this, two separately-typed
+   paragraphs render flush against each other with no visible gap. Scoped to `p + p` (not every
+   `p`) so there's no unwanted leading gap before the first paragraph or trailing gap after the
+   last one. */
+.ProseMirror p + p {
+  margin-top: 0.75em;
+}
+
+/* Tailwind Preflight removes native list markers, so restore them inside the rich-text editor. */
+.ProseMirror ul,
+.ProseMirror ol {
+  margin: 0.5em 0;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror ul {
+  list-style: disc;
+}
+
+.ProseMirror ol {
+  list-style: decimal;
+}
+
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin: 0.25em 0;
+}
+
+.ProseMirror .tableWrapper {
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.ProseMirror table,
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ProseMirror th,
+.ProseMirror td,
+.markdown-preview th,
+.markdown-preview td {
+  min-width: 6rem;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  vertical-align: top;
+}
+
+.ProseMirror th,
+.markdown-preview th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.ProseMirror .selectedCell {
+  background: #e0f2fe;
+}
+
+.markdown-preview p + p {
+  margin-top: 0.75em;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.5em 0;
+  padding-left: 1.5rem;
+}
+
+.markdown-preview ul {
+  list-style: disc;
+}
+
+.markdown-preview ol {
+  list-style: decimal;
+}
+
+.markdown-preview li > ul,
+.markdown-preview li > ol {
+  margin: 0.25em 0;
+}
+
+.markdown-preview {
+  overflow-x: auto;
+}
+
+.markdown-preview table {
+  margin: 0.75em 0;
+}
