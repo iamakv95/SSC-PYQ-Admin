@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, Pencil } from 'lucide-react'
 import type { ColumnDef } from '../components/DataTable'
 import { toast } from 'sonner'
-import { questionsApi, type Question, type QuestionFilters } from '../lib/api/questions'
+import { questionsApi, type ContentStatus, type Question, type QuestionFilters } from '../lib/api/questions'
 import { makeOptimisticToggle } from '../lib/optimisticToggle'
 import { examsApi } from '../lib/api/exams'
 import { subjectsApi } from '../lib/api/subjects'
@@ -39,11 +39,16 @@ export function QuestionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [filters, setFilters] = useState<QuestionFilters>({})
   const [page, setPage] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<Question | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [formValues, setFormValues] = useState<QuestionFormValues | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<Question | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [page, filters])
 
   const examsQuery = useQuery({ queryKey: ['exams', false], queryFn: () => examsApi.list(false) })
   const subjectsQuery = useQuery({ queryKey: ['subjects', false], queryFn: () => subjectsApi.list(false) })
@@ -109,6 +114,26 @@ export function QuestionsPage() {
       toast.error(e instanceof Error ? e.message : 'Something went wrong.')
     },
     onSettled: invalidate,
+  })
+
+  const setStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ContentStatus }) => questionsApi.setStatus(id, status),
+    onSuccess: (_, vars) => {
+      toast.success(`Question set to ${vars.status}.`)
+      invalidate()
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to update status.'),
+  })
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: ContentStatus }) =>
+      questionsApi.bulkSetStatus(ids, status),
+    onSuccess: (res, vars) => {
+      toast.success(`Updated ${res.count} question(s) to ${vars.status}.`)
+      setSelectedIds(new Set())
+      invalidate()
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Bulk status update failed.'),
   })
 
   const archiveMutation = useMutation({
@@ -201,7 +226,58 @@ export function QuestionsPage() {
     }
   }, [searchParams])
 
+  const pageItems = listQuery.data?.items ?? []
+  const pageIds = pageItems.map((q) => q.id)
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
+
+  function toggleSelectAllPage() {
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        pageIds.forEach((id) => next.delete(id))
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        pageIds.forEach((id) => next.add(id))
+        return next
+      })
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const columns: ColumnDef<Question>[] = [
+    {
+      id: 'select',
+      header: (
+        <input
+          type="checkbox"
+          checked={allPageSelected}
+          aria-label="Select all questions on page"
+          onChange={toggleSelectAllPage}
+          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      ),
+      className: 'w-px !px-3',
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.original.id)}
+          aria-label="Select question"
+          onChange={() => toggleSelect(row.original.id)}
+          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      ),
+    },
     {
       id: 'preview',
       header: 'Question',
@@ -229,7 +305,34 @@ export function QuestionsPage() {
         </span>
       ),
     },
-    { accessorKey: 'status', header: 'Status', className: 'w-px' },
+    {
+      id: 'status',
+      header: 'Status',
+      className: 'w-px',
+      cell: ({ row }) => {
+        const isPub = row.original.status === 'Published'
+        return (
+          <button
+            type="button"
+            disabled={setStatusMutation.isPending}
+            onClick={() =>
+              setStatusMutation.mutate({
+                id: row.original.id,
+                status: isPub ? 'Draft' : 'Published',
+              })
+            }
+            title="Click to toggle status"
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors ${
+              isPub
+                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            {row.original.status}
+          </button>
+        )
+      },
+    },
     {
       id: 'passage',
       header: 'Passage',
@@ -457,6 +560,42 @@ export function QuestionsPage() {
           }}
         />
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/75 p-3 text-sm text-blue-900 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+              {selectedIds.size}
+            </span>
+            <span className="font-medium">question{selectedIds.size > 1 ? 's' : ''} selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="!py-1.5 !px-3 !text-xs font-medium bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-xs"
+              disabled={bulkStatusMutation.isPending}
+              onClick={() => bulkStatusMutation.mutate({ ids: [...selectedIds], status: 'Published' })}
+            >
+              {bulkStatusMutation.isPending ? 'Publishing...' : 'Publish Selected'}
+            </Button>
+            <Button
+              variant="secondary"
+              className="!py-1.5 !px-3 !text-xs font-medium bg-white text-amber-700 border-amber-300 hover:bg-amber-50 shadow-xs"
+              disabled={bulkStatusMutation.isPending}
+              onClick={() => bulkStatusMutation.mutate({ ids: [...selectedIds], status: 'Draft' })}
+            >
+              {bulkStatusMutation.isPending ? 'Moving to Draft...' : 'Move to Draft'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="!py-1.5 !px-2.5 !text-xs text-slate-600 hover:text-slate-900"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </Button>
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

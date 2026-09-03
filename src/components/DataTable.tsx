@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 export interface ColumnDef<T> {
   id?: string
   accessorKey?: keyof T
-  header: string
+  header: ReactNode
   /** Applied to both header and body cells for column-specific sizing/alignment. */
   className?: string
   cell?: (ctx: { row: { original: T }; getValue: <V = unknown>() => V }) => ReactNode

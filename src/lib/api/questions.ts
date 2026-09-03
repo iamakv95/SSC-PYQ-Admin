@@ -95,6 +95,14 @@ export const questionsApi = {
     ),
   setActive: (id: string, active: boolean) =>
     callAdminFunction<{ item: Question }>('admin-questions', { action: 'setActive', id, active }).then((r) => r.item),
+  setStatus: (id: string, status: ContentStatus) =>
+    callAdminFunction<{ item: Question }>('admin-questions', { action: 'setStatus', id, status }).then((r) => r.item),
+  bulkSetStatus: (ids: string[], status: ContentStatus) =>
+    callAdminFunction<{ items: { id: string; status: ContentStatus }[]; count: number }>('admin-questions', {
+      action: 'bulkSetStatus',
+      ids,
+      status,
+    }),
   archive: (id: string) =>
     callAdminFunction<{ item: Question }>('admin-questions', { action: 'archive', id }).then((r) => r.item),
   restore: (id: string) =>
