@@ -10,6 +10,43 @@ function formatDate(value: string | null): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
+function UserAvatar({
+  avatarUrl,
+  displayName,
+  isGuest,
+}: {
+  avatarUrl: string | null
+  displayName: string
+  isGuest: boolean
+}) {
+  const [imgError, setImgError] = useState(false)
+  const initial = (displayName?.trim()?.[0] ?? (isGuest ? 'G' : 'U')).toUpperCase()
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={displayName}
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+        className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover"
+      />
+    )
+  }
+
+  return (
+    <div
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
+        isGuest
+          ? 'border-slate-200 bg-slate-100 text-slate-500'
+          : 'border-blue-200 bg-blue-50 text-blue-700'
+      }`}
+    >
+      {initial}
+    </div>
+  )
+}
+
 export function UsersPage() {
   const [category, setCategory] = useState<UserCategory>('all')
   const [page, setPage] = useState(0)
@@ -24,13 +61,20 @@ export function UsersPage() {
       header: 'User',
       className: 'w-full max-w-0',
       cell: ({ row }) => (
-        <div className="min-w-0">
-          <span className="block truncate font-medium text-slate-900" title={row.original.displayName}>
-            {row.original.displayName}
-          </span>
-          <span className="block truncate text-xs text-slate-400" title={row.original.email ?? row.original.id}>
-            {row.original.email ?? row.original.id}
-          </span>
+        <div className="flex items-center gap-3 min-w-0">
+          <UserAvatar
+            avatarUrl={row.original.avatarUrl}
+            displayName={row.original.displayName}
+            isGuest={row.original.isGuest}
+          />
+          <div className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-slate-900" title={row.original.displayName}>
+              {row.original.displayName}
+            </span>
+            <span className="block truncate text-xs text-slate-400" title={row.original.email ?? row.original.id}>
+              {row.original.email ?? row.original.id}
+            </span>
+          </div>
         </div>
       ),
     },
