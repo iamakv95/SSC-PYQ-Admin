@@ -13,6 +13,7 @@ import { PassagesPage } from './pages/PassagesPage'
 import { FixedQuizzesPage } from './pages/FixedQuizzesPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { QuestionReportsPage } from './pages/QuestionReportsPage'
+import { AppFeedbackPage } from './pages/AppFeedbackPage'
 import { UsersPage } from './pages/UsersPage'
 import { supabase } from './lib/supabase'
 
@@ -64,6 +65,7 @@ function AuthedApp() {
         <Route path="/passages" element={<PassagesPage />} />
         <Route path="/fixed-quizzes" element={<FixedQuizzesPage />} />
         <Route path="/question-reports" element={<QuestionReportsPage />} />
+        <Route path="/app-feedback" element={<AppFeedbackPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
