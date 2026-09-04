@@ -13,9 +13,11 @@ export interface AdminUser {
   onboardingStep: string
   createdAt: string
   lastSignInAt: string | null
+  isDeletedAccount?: boolean
+  source?: string
 }
 
-export type UserCategory = 'all' | 'real' | 'guest'
+export type UserCategory = 'all' | 'real' | 'guest' | 'leads'
 
 export const usersApi = {
   list: (category: UserCategory, page = 0, pageSize = 50) =>

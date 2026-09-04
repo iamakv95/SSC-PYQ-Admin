@@ -82,17 +82,33 @@ export function UsersPage() {
       id: 'account',
       header: 'Account',
       className: 'w-px',
-      cell: ({ row }) => (
-        <span className={`rounded-full px-2 py-1 text-xs font-medium ${row.original.isGuest ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-700'}`}>
-          {row.original.isGuest ? 'Guest' : 'Real'}
-        </span>
-      ),
+      cell: ({ row }) => {
+        if (category === 'leads') {
+          return (
+            <span
+              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                row.original.isDeletedAccount
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}
+            >
+              {row.original.isDeletedAccount ? 'Deleted Account' : 'Active Account'}
+            </span>
+          )
+        }
+        return (
+          <span className={`rounded-full px-2 py-1 text-xs font-medium ${row.original.isGuest ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-700'}`}>
+            {row.original.isGuest ? 'Guest' : 'Real'}
+          </span>
+        )
+      },
     },
     {
       id: 'exam',
-      header: 'Target Exam',
+      header: category === 'leads' ? 'Source' : 'Target Exam',
       className: 'w-px',
-      cell: ({ row }) => row.original.examName ?? '—',
+      cell: ({ row }) =>
+        category === 'leads' ? (row.original.source ?? 'app_signup') : (row.original.examName ?? '—'),
     },
     {
       accessorKey: 'xpTotal',
@@ -122,7 +138,7 @@ export function UsersPage() {
     },
     {
       id: 'lastSignIn',
-      header: 'Last Sign-in',
+      header: category === 'leads' ? 'Deleted At' : 'Last Sign-in',
       className: 'w-px',
       cell: ({ row }) => formatDate(row.original.lastSignInAt),
     },
@@ -138,26 +154,61 @@ export function UsersPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
           <p className="mt-1 text-sm text-slate-500">View real and guest accounts using the mobile app.</p>
         </div>
-        <div className="flex rounded-md border border-slate-200 bg-white p-1">
-          {([
-            ['all', 'All'],
-            ['real', 'Real users'],
-            ['guest', 'Guest users'],
-          ] as const).map(([value, label]) => (
+        <div className="flex items-center gap-3">
+          {category === 'leads' && (usersQuery.data?.items?.length ?? 0) > 0 && (
             <button
-              key={value}
               type="button"
               onClick={() => {
-                setCategory(value)
-                setPage(0)
+                const items = usersQuery.data?.items ?? []
+                const headers = ['Email', 'Name', 'Status', 'Source', 'Joined At', 'Deleted At']
+                const csvRows = [
+                  headers.join(','),
+                  ...items.map((item) =>
+                    [
+                      `"${item.email ?? ''}"`,
+                      `"${item.displayName ?? ''}"`,
+                      `"${item.isDeletedAccount ? 'Deleted' : 'Active'}"`,
+                      `"${item.source ?? 'app_signup'}"`,
+                      `"${item.createdAt ?? ''}"`,
+                      `"${item.lastSignInAt ?? ''}"`,
+                    ].join(',')
+                  ),
+                ]
+                const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `marketing_leads_${new Date().toISOString().slice(0, 10)}.csv`
+                a.click()
+                URL.revokeObjectURL(url)
               }}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${
-                category === value ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
-              }`}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
-              {label}
+              Export Leads (CSV)
             </button>
-          ))}
+          )}
+          <div className="flex rounded-md border border-slate-200 bg-white p-1">
+            {([
+              ['all', 'All'],
+              ['real', 'Real users'],
+              ['guest', 'Guest users'],
+              ['leads', 'Marketing Leads'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setCategory(value)
+                  setPage(0)
+                }}
+                className={`rounded px-3 py-1.5 text-sm font-medium ${
+                  category === value ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -168,7 +219,7 @@ export function UsersPage() {
       ) : (
         <>
           <p className="mb-2 text-sm text-slate-500">
-            {total} {category === 'all' ? 'users' : category === 'real' ? 'real users' : 'guest users'}
+            {total} {category === 'all' ? 'users' : category === 'real' ? 'real users' : category === 'guest' ? 'guest users' : 'marketing leads'}
           </p>
           <DataTable columns={columns} data={usersQuery.data?.items ?? []} emptyMessage="No users found." fitContainer />
           {total > PAGE_SIZE && (
